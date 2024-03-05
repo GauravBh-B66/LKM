@@ -124,6 +124,18 @@ static int __init initFunction(void){
     }
     printk (KERN_INFO "Device class registered succsssfully: %s.\n", CLASS_NAME);
 
+
+    //Register the device driver
+    //creates a device and registers it with sysfs
+    charDev = device_create(charDevClass, NULL, MKDEV(majNumber, minNumber), NULL, DEVICE_NAME);
+    if (IS_ERR(charDev)){
+        class_destroy(charDevClass);
+        unregister_chrdev(majNumber, DEVICE_NAME);
+        printk(KERN_INFO"Failed during registration of device driver. Error code: %d.\n", PTR_ERR(charDev));
+        return PTR_ERR(charDev);
+    }
+    printk (KERN_INFO "Device driver registered succsssfully: %s.\n", DEVICE_NAME);
+
     
     return 0;
 }
