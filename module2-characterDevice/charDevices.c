@@ -11,8 +11,9 @@
 #include <linux/uaccess.h>
 #include <linux/errno.h>
 
-#define CLASS_NAME "testDevice"
-#define DEVICE_NAME "testDeviceOne"
+#define CLASS_NAME "testClass"
+#define DRIVER_NAME "testDriver"
+#define DEVICE_NAME "testDevice"
 
 MODULE_LICENSE ("GPL");
 MODULE_AUTHOR ("Gaurav Bhattarai");
@@ -21,8 +22,9 @@ MODULE_VERSION ("One and Only");
 
 
 int nOpenCount=0, messageLength=0;
-int majNumber, minNumber;
-char kBuffer[256];
+//dev_t is a 32-bit datatype. MSB-20 bit ==> Major number, LSB 12-bits ==> MinorNumber
+static dev_t deviceNumber;      
+static char kBuffer[256];
 static ssize_t class *charDevClass = NULL;
 static ssize_t device *charDev = NULL;
 
@@ -94,23 +96,15 @@ static struct file_operations fops = {
     .write = dev_write; 
 }
 
-
-
 static int __init initFunction(void){
     printk (KERN _INFO "Initializing the character device driver module\n");
     
-    //int register_chrdev(uint major, uint baseminor, uint count, 
-    //                    char *name, struct file_operations *fops)
-    //To allocate minor numbers for @count devices starting from @baseminor
-
-    //int register_chrdev(uint major, char *name, struct file_operations *fops) 
-    //For single device.
-    majNumber = register_chrdev(0, DEVICE_NAME, &fops);
-    if (majNumber < 0){
-        printk(KERN_INFO "Failed during registration of major number.\n");
-        return majNumber;
-    }
-    printk(KERN_INFO "Successfully registered the device. Major:Minor=%d:%d", majNumber>>20, majNumber&0xfffff);
+    // int alloc_chrdev_region(dev_t * dev, unsigned baseminor, unsigned count, const char * name);
+	if( alloc_chrdev_region(&deviceNumber, 0, 1, DEVICE_NAME) < 0) {
+		printk("Error: Allocation of device number failed.\n");
+		return -1;
+	}
+    printk(KERN_INFO "Successfully registered the device. Major:Minor=%d:%d", deviceNumber>>20, deviceNumber&0xfffff);
 
     //Registration of device class
     //Create a struct class pointer (used in calls to device_create)
@@ -149,7 +143,6 @@ static void __exit exitFunction(void){
     printk(KERN_INFO"LKM Exited.\n");
 
 }
-
 
 module_init(initFunction);
 module_exit(exitFunction);
