@@ -142,6 +142,12 @@ static int __init initFunction(void){
 
 static void __exit exitFunction(void){
 
+    device_destroy(charDevClass, MKDEV(majNumber, minNumber));
+    class_unregister(charDevClass);
+    class_destroy(charDevClass);
+    unregister_chrdev(majNumber, DEVICE_NAME);
+    printk(KERN_INFO"LKM Exited.\n");
+
 }
 
 
