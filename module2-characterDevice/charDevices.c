@@ -27,7 +27,7 @@ static dev_t deviceNumber;
 static char kBuffer[256];
 static struct class *charDevClass = NULL;
 static struct device *pDevice;
-static struct cdev *pCharDevice;
+static struct cdev charDevice;
 
 
 
@@ -132,10 +132,10 @@ static int __init initFunction(void){
 
 
     //Initialize device file
-    cdev_init(pCharDevice, &fops);
+    cdev_init(&charDevice, &fops);
     //Registration of device to the kernel
     //int cdev_add(struct cdev * p, dev_t dev, unsigned count);
-    if ((cdev_add(pCharDevice, deviceNumber, 1)) < 0){
+    if ((cdev_add(&charDevice, deviceNumber, 1)) < 0){
         printk(KERN_INFO"Failed during the registration of device to the kernel.");
         goto errorDeviceRegistration;
     }
