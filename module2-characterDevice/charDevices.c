@@ -73,17 +73,19 @@ static ssize_t dev_read(struct file *pFile, char *uBuffer, size_t length, loff_t
 }
 
 /*  Called when the data is sent from user-space to kernel space.
+    This function should exit only when it returns non-zero.
+    So, checking if there are any left data is feaseble.
     @param pFile:  pointer to the file
     @param uBuffer: buffer (in userspace) which has the data to be sent. 
                 sprintf function copies the contents of uBuffer into kBuffer.  
     @param length: length of user space buffer
-    @param offset: sets the cursor position in the file to read into. 
+    @param offset: sets the cursor position in the file to read into.
 */
-static ssize_t dev_write(struct file *pFile, const char *uBuffer, size_t length, loff_t *offset){    
-    sprintf(kBuffer, "%s", uBuffer);
-    messageLength = strlen (kBuffer);
-    printk (KERN_INFO "Received %zu characters from user-space buffer.", length);
-    return 0;
+static ssize_t dev_write(struct file *pFile, const char *uBuffer, size_t length, loff_t *offset){
+    //Check whether the message fits within the allocated kernel buffer.
+    messageLength = min (length, sizeof(kBuffer));
+    int nError = copy_from_user(kBuffer, uBuffer, messageLength);   
+    return (messageLength - nError);
 }
 
 /*  file_operations is a structure defined in /linux/fs.h
