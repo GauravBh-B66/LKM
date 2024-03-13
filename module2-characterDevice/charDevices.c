@@ -73,20 +73,28 @@ static ssize_t dev_read(struct file *pFile, char *uBuffer, size_t length, loff_t
 }
 
 /*  Called when the data is sent from user-space to kernel space.
-    This function should exit only when it returns non-zero.
-    So, checking if there are any left data is feaseble.
     @param pFile:  pointer to the file
     @param uBuffer: buffer (in userspace) which has the data to be sent. 
                 sprintf function copies the contents of uBuffer into kBuffer.  
-    @param length: length of user space buffer
+    @param requested_length: length of requested data transfer.
     @param offset: sets the cursor position in the file to read into.
+    @return_val == length ==> copied requested no. of bytes
+    @ 0 < return_val < length ==> part of data is copied. System retries to write rest of the data. Requested length is decreased automatically.
+    @return_val == 0 ==> Nothing was written. System retries call to write function.
+    @return_val < 0 ==> Error occured.
 */
-static ssize_t dev_write(struct file *pFile, const char *uBuffer, size_t length, loff_t *offset){
-    //Check whether the message fits within the allocated kernel buffer.
-    messageLength = min (length, sizeof(kBuffer));
-    int nError = copy_from_user(kBuffer, uBuffer, messageLength);   
-    return (messageLength - nError);
+static ssize_t dev_write(struct file *pFile, const char *uBuffer, size_t requested_length, loff_t *offset){    
+    int nError, nCopy = 0;
+    printk (KERN_INFO "User requested to write %zu characters.", requested_length); 
+
+    nCopy = min(requested_length, sizeof(kBuffer));
+    nError = copy_from_user(kBuffer, uBuffer, nCopy);
+    messageLength = nCopy;
+
+    printk (KERN_INFO "Wrote %d characters from user-space buffer.", nCopy);
+    return (nCopy - nError);
 }
+
 
 /*  file_operations is a structure defined in /linux/fs.h
     The structure contains function pointers related to different operations that
