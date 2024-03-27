@@ -35,6 +35,14 @@ static struct device*   pDeviceGpioControl;
 static struct cdev      cdevGpioControl;
 
 
+static struct file_operations fops ={
+    .owner = THIS_MODULE,
+    .open = deviceFileOpen,
+    .release = deviceFileRelease,
+    .write = deviceFileWrite,
+    .read = deviceFileRead,
+};
+
 static int deviceFileOpen(struct inode* pInode, struct file* pFile){
     printk(KERN_INFO "GPIO device file opened. Count = %d.\n", ++times);
     return 0;
@@ -45,49 +53,27 @@ static int deviceFileRelease(struct inode* pInode, struct file* pFile){
     return 0;
 }
 
-static ssize_t deviceFileWrite(struct file* pFile, const char* uBuffer, size_t requestedLength, loff_t* pOffset){
-    char requestedLedState; 
+static int deviceFileWrite(struct file* pFile, const char* uBuffer, size_t requestedLength, loff_t* pOffset){
+    char requestedLedState[requestedLength]; 
     int nCopy, nError;
-
-    nCopy = min (sizeof(char), (int)requestedLength);
-    nError = copy_from_user(&requestedLedState, uBuffer, nCopy);
+    nError = copy_from_user(requestedLedState, uBuffer, (int)requestedLength);
     //Input 1 ==> ON, Input 0 ==> OFF
-    switch (requestedLedState){
+    switch (requestedLedState[0]){
         case '1':
             //Turn LED on
-            gpio_set_value(OUT_GPIO, 1);
-            break;
         case '0':
             //Turn LED off
-            gpio_set_value(OUT_GPIO, 0);
-            break;
         default:
             printk(KERN_INFO "Invalid input provided by user.\n");
-            break;
     }
-    return (nCopy-nError);
+    return ((int)requestedLength - nError);
 }
 
-static ssize_t deviceFileRead(struct file* pFile, char* uBuffer, size_t requestedLength, loff_t* pOffset){
-    int nCopy, nError;
-    char ledStatus;
-
-    nCopy = min((int)requestedLength, sizeof(ledStatus));
-
-    ledStatus = (char)gpio_get_value(IN_GPIO);
-    printk(KERN_INFO"LED Current State: %c", ledStatus);
-    nError = copy_to_user(uBuffer, &ledStatus, nCopy);
-
-    return (nCopy-nError);
+static int deviceFileRead(struct file* pFile, const char* uBuffer, size_t requestedLength, loff_t* pOffset){
+    return ((int)requestedLength);
 }
 
-static struct file_operations fops ={
-    .owner = THIS_MODULE,
-    .open = deviceFileOpen,
-    .release = deviceFileRelease,
-    .write = deviceFileWrite,
-    .read = deviceFileRead,
-};
+
 
 static int __init initFunction(void){
 
@@ -131,13 +117,13 @@ static int __init initFunction(void){
     */
     if(gpio_request(OUT_GPIO, "RPi- Test Output GPIO") < 0){
         printk("ERROR: Allocation of output GPIO %d.\n", OUT_GPIO);
-        goto errorGPIOAllocation;
+        goto errorGPIOAllocation
     };
 
     //Set gpio direction
     if (gpio_direction_output(OUT_GPIO, 1) < 0){
         printk("ERROR: Setting the direction of output GPIO %d.\n", OUT_GPIO);
-        goto errorSetDirectionOutput;
+        goto errorSetDirectionOutput
     }
 
     if(gpio_request (IN_GPIO, "RPi- Test Input GPIO") < 0){
@@ -147,7 +133,7 @@ static int __init initFunction(void){
 
     if (gpio_direction_input(IN_GPIO) < 0){
         printk("ERROR: Setting the direction of input GPIO %d.\n", IN_GPIO);
-        goto errorSetDirectionInput;
+        goto errorSetDirectionInput
     }
 
 
@@ -179,7 +165,7 @@ static void __exit exitFunction(void){
     class_destroy(pClassGpioControl);
     unregister_chrdev_region(deviceNumber, 1);
 
-    printk(KERN_INFO"GPIO driver exited.\n");
+    printk(KERN_LOG"GPIO driver exited.\n");
 
 }
 
